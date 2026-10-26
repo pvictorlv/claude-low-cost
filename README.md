@@ -8,12 +8,14 @@ Plano completo: fases 0–6, cada uma com um gate de go/no-go baseado em número
 
 | Fase | O quê | Estado |
 |---|---|---|
-| 0 | `lcc usage`: de onde vem o gasto, a partir dos transcripts locais | pronto |
-| 1 | llama-server + `lcc doctor` / `lcc bench` | a fazer |
-| 2 | roteamento de modelo por subagent + corte de output | a fazer |
-| 3 | juiz local compatível com Jev | a fazer |
-| 4 | `code_search` local para exploração | a fazer |
-| 5 | review preliminar local | a fazer |
+| 0 | `lcc usage` (de onde vem o gasto) + `lcc whatif` (quanto cada alavanca valeria) | pronto |
+| 2 | base menor, modelo certo por subagent, sessões mais curtas: [playbook](docs/fase2-playbook.md) + `claude/` | pronto para aplicar |
+| 1 | llama-server + `lcc doctor` / `lcc bench` | em espera |
+| 3 | juiz local compatível com Jev | em espera |
+| 4 | `code_search` local para exploração | em espera |
+| 5 | review preliminar local | em espera |
+
+As fases com LLM local (1, 3, 4 e 5) estão em espera porque a medição na VM mostrou que ~68% do custo é reler contexto (a base fixa e as sessões longas). Saídas de ferramentas, exploração e review, que é o que um modelo local substituiria, somam pouco. Voltam à pauta se, depois da Fase 2, o `lcc usage` mostrar gasto que elas consigam atacar.
 
 ## Uso (Fase 0)
 
@@ -33,6 +35,26 @@ O relatório mostra:
 - **avg ctx**: tamanho médio do prompt por requisição, ou seja, o que cada turno paga para reler.
 - **By agent type**: `main` contra cada tipo de subagent (o tipo vem do `.meta.json` do subagent).
 - **Tool outputs**: quais ferramentas despejam mais texto no contexto, por agente.
+
+### Perfil de contexto
+
+A tabela "Context profile" separa, por tipo de agente:
+- a **base**: o prompt da primeira requisição, antes de qualquer trabalho;
+- o **pico** a que o prompt chega;
+- quanto da releitura vai só para a base.
+
+Base alta pede alavancas de configuração. Pico alto pede sessões mais curtas.
+
+## Simulação (`lcc whatif`)
+
+```sh
+node packages/cli/dist/main.js whatif --since 2026-10-01 \
+  --cut-baseline 30k \
+  --cap-context 150k@^main$ \
+  --swap-model "claude-haiku-5-5@^(publish|run|prep)-"
+```
+
+O comando recalcula o preço das requisições já gravadas sob cada mudança, depois todas juntas. São estimativas: as premissas estão em `packages/cli/src/usage/whatif.ts`.
 
 ## Desenvolvimento
 

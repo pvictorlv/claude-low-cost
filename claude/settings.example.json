@@ -1,0 +1,8 @@
+{
+  "$comment": "Example only. Apply one lever at a time and measure with `lcc usage` before adding the next. See docs/fase2-playbook.md.",
+  "env": {
+    "ENABLE_TOOL_SEARCH": "true",
+    "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "200000",
+    "MAX_MCP_OUTPUT_TOKENS": "15000"
+  }
+}

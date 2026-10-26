@@ -1,4 +1,5 @@
 import type { ContextRow, CostRow, ToolRow, UsageReport } from "./aggregate.js";
+import type { ScenarioResult } from "./whatif.js";
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -72,6 +73,22 @@ function toolTable(rows: ToolRow[]): string {
     ["agent / tool", "calls", "est total", "max", "avg"],
     body,
   )}`;
+}
+
+export function renderWhatIf(results: ScenarioResult[]): string {
+  const body = results.map((r) => [
+    r.name,
+    usd(r.beforeUsd),
+    usd(r.afterUsd),
+    usd(r.savedUsd),
+    pct(r.savedShare),
+    String(r.affectedRequests),
+  ]);
+  return (
+    `# What if — same recorded requests, re-priced (estimates, see whatif.ts for the assumptions)\n\n` +
+    table(["scenario", "before", "after", "saved", "saved %", "reqs touched"], body) +
+    "\n"
+  );
 }
 
 export function renderReport(r: UsageReport): string {

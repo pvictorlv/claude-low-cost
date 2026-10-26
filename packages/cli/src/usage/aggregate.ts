@@ -76,6 +76,16 @@ export function matchesFilter(e: { timestamp: string; project: string }, f: Usag
   return true;
 }
 
+/** Applies the filter and drops repeats: old transcript formats can hold the same request in two files. */
+export function selectEvents(events: UsageEvent[], filter: UsageFilter): UsageEvent[] {
+  const seen = new Set<string>();
+  return events.filter((e) => {
+    if (!matchesFilter(e, filter) || seen.has(e.requestId)) return false;
+    seen.add(e.requestId);
+    return true;
+  });
+}
+
 const promptOf = (u: TokenUsage) => u.input + u.cacheRead + u.cacheWrite5m + u.cacheWrite1h;
 
 function median(values: number[]): number {
@@ -153,8 +163,6 @@ export function buildReport(
   filter: UsageFilter,
   top: number,
 ): UsageReport {
-  // Old transcript formats can hold the same request in two files.
-  const seen = new Set<string>();
   const priced: Array<UsageEvent & { usd: number }> = [];
   const unpricedModels = new Set<string>();
   const totalUsage = emptyUsage();
@@ -162,9 +170,7 @@ export function buildReport(
   let unpricedRequests = 0;
   let requests = 0;
 
-  for (const e of usageEvents) {
-    if (!matchesFilter(e, filter) || seen.has(e.requestId)) continue;
-    seen.add(e.requestId);
+  for (const e of selectEvents(usageEvents, filter)) {
     requests++;
     addUsage(totalUsage, e.usage);
     const cost = costBreakdown(pricing, e.model, e.usage, e.speed);
