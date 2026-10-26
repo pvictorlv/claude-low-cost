@@ -130,6 +130,30 @@ describe("buildReport", () => {
     expect(r.byMonth.map((x) => x.key)).toEqual(["2026-09", "2026-10"]);
   });
 
+  it("profiles baseline and growth of the prompt per transcript", () => {
+    const req = (id: string, ts: string, cacheRead: number, write: number) =>
+      assistant(id, "claude-opus-5-5", [], { input_tokens: 0, output_tokens: 1, cache_read_input_tokens: cacheRead, cache_creation_input_tokens: write }, ts);
+    // Baseline 60k on the first request, growing to 100k.
+    const text = [
+      req("p1", "2026-10-01T00:00:00Z", 0, 60_000),
+      req("p2", "2026-10-01T00:01:00Z", 60_000, 20_000),
+      req("p3", "2026-10-01T00:02:00Z", 80_000, 20_000),
+    ].join("\n");
+    const parsed = parseTranscript({ ...main, path: "t1" }, text);
+    const r = buildReport(parsed.usage, [], pricing, {}, 10);
+    expect(r.contextProfile).toEqual([
+      {
+        key: "main",
+        transcripts: 1,
+        baselineTokens: 60_000,
+        peakTokens: 100_000,
+        requests: 3,
+        // 60k of the 140k cache-read tokens re-read the baseline.
+        baselineReadShare: 120_000 / 140_000,
+      },
+    ]);
+  });
+
   it("applies --since and --project filters", () => {
     expect(buildReport(events, [], pricing, { since: "2026-10-01" }, 10).totals.usd).toBeCloseTo(20.5);
     expect(buildReport(events, [], pricing, { project: "other" }, 10).totals.requests).toBe(0);

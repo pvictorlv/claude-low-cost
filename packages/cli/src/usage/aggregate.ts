@@ -43,6 +43,23 @@ export interface UsageReport {
   byMonth: CostRow[];
   topSessions: CostRow[];
   topTools: ToolRow[];
+  contextProfile: ContextRow[];
+}
+
+/**
+ * How big the prompt is per agent type, split into the part paid before any work
+ * happens (baseline) and how far it grows. Medians across transcripts.
+ */
+export interface ContextRow {
+  key: string;
+  transcripts: number;
+  /** First request's prompt: system prompt + tool schemas + CLAUDE.md/skills + the task. */
+  baselineTokens: number;
+  /** Largest prompt reached in the transcript. */
+  peakTokens: number;
+  requests: number;
+  /** Share of this agent type's cache-read dollars spent re-reading the baseline. */
+  baselineReadShare: number;
 }
 
 export interface UsageFilter {
@@ -57,6 +74,55 @@ export function matchesFilter(e: { timestamp: string; project: string }, f: Usag
   if (f.since && e.timestamp < f.since) return false;
   if (f.project && !e.project.toLowerCase().includes(f.project.toLowerCase())) return false;
   return true;
+}
+
+const promptOf = (u: TokenUsage) => u.input + u.cacheRead + u.cacheWrite5m + u.cacheWrite1h;
+
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid]! : Math.round((s[mid - 1]! + s[mid]!) / 2);
+}
+
+function contextProfile(events: UsageEvent[]): ContextRow[] {
+  const byTranscript = new Map<string, UsageEvent[]>();
+  for (const e of events) {
+    const list = byTranscript.get(e.transcript) ?? [];
+    list.push(e);
+    byTranscript.set(e.transcript, list);
+  }
+
+  const perAgent = new Map<
+    string,
+    { baseline: number[]; peak: number[]; requests: number[]; baselineReads: number; reads: number }
+  >();
+  for (const list of byTranscript.values()) {
+    list.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
+    const baseline = promptOf(list[0]!.usage);
+    const agent = list[0]!.agentType;
+    const acc = perAgent.get(agent) ?? { baseline: [], peak: [], requests: [], baselineReads: 0, reads: 0 };
+    acc.baseline.push(baseline);
+    acc.peak.push(Math.max(...list.map((e) => promptOf(e.usage))));
+    acc.requests.push(list.length);
+    for (const e of list) {
+      acc.reads += e.usage.cacheRead;
+      // A request re-reads at most the baseline's worth of the cached prefix.
+      acc.baselineReads += Math.min(e.usage.cacheRead, baseline);
+    }
+    perAgent.set(agent, acc);
+  }
+
+  return [...perAgent.entries()]
+    .map(([key, a]) => ({
+      key,
+      transcripts: a.baseline.length,
+      baselineTokens: median(a.baseline),
+      peakTokens: median(a.peak),
+      requests: median(a.requests),
+      baselineReadShare: a.reads > 0 ? a.baselineReads / a.reads : 0,
+    }))
+    .sort((x, y) => y.transcripts - x.transcripts);
 }
 
 function group(
@@ -141,5 +207,6 @@ export function buildReport(
     byMonth: group(priced, (e) => e.timestamp.slice(0, 7), total).sort((a, b) => a.key.localeCompare(b.key)),
     topSessions: group(priced, (e) => `${e.project} :: ${e.sessionId}`, total).slice(0, top),
     topTools: [...tools.values()].sort((a, b) => b.estTokens - a.estTokens).slice(0, top),
+    contextProfile: contextProfile(priced).slice(0, top),
   };
 }

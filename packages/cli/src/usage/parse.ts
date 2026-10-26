@@ -17,6 +17,8 @@ export interface TranscriptSource {
 /** One billed API request. */
 export interface UsageEvent {
   requestId: string;
+  /** Path of the transcript the request came from; one per conversation or subagent run. */
+  transcript: string;
   project: string;
   sessionId: string;
   agentType: string;
@@ -154,6 +156,7 @@ export function parseTranscript(source: TranscriptSource, text: string): ParsedT
       if (!key || !rec.message.usage || rec.message.model === SYNTHETIC_MODEL) continue;
       byRequest.set(key, {
         requestId: key,
+        transcript: source.path,
         project: source.project,
         sessionId: source.sessionId,
         agentType,

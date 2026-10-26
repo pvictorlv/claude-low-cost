@@ -1,4 +1,4 @@
-import type { CostRow, ToolRow, UsageReport } from "./aggregate.js";
+import type { ContextRow, CostRow, ToolRow, UsageReport } from "./aggregate.js";
 
 const usd = (n: number) => `$${n.toFixed(2)}`;
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -44,6 +44,22 @@ function classTable(r: UsageReport): string {
   return `## By token class\n${table(["class", "usd", "share", "tokens"], body)}`;
 }
 
+function contextTable(rows: ContextRow[]): string {
+  const k = (n: number) => `${Math.round(n / 1000)}k`;
+  const body = rows.map((r) => [
+    r.key,
+    String(r.transcripts),
+    k(r.baselineTokens),
+    k(r.peakTokens),
+    String(r.requests),
+    pct(r.baselineReadShare),
+  ]);
+  return `## Context profile (medians per transcript; baseline = prompt of the first request)\n${table(
+    ["agent", "runs", "baseline", "peak", "reqs", "baseline share of reads"],
+    body,
+  )}`;
+}
+
 function toolTable(rows: ToolRow[]): string {
   const body = rows.map((r) => [
     r.key,
@@ -66,6 +82,7 @@ export function renderReport(r: UsageReport): string {
         ? `   UNPRICED: ${r.totals.unpricedRequests} requests (${r.totals.unpricedModels.join(", ")}) — add them to pricing.json`
         : ""),
     classTable(r),
+    contextTable(r.contextProfile),
     costTable("By month", r.byMonth),
     costTable("By agent type (main = top-level conversation)", r.byAgentType),
     costTable("By model", r.byModel),
