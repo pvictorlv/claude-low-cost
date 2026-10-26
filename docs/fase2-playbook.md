@@ -31,13 +31,13 @@ Ele mostra os tokens por categoria e por ferramenta MCP carregada. Anote os maio
 
 | Item | Como reduzir |
 |---|---|
-| Schemas de ferramentas MCP | `ENABLE_TOOL_SEARCH` sem valor ou `true` adia todas as ferramentas MCP (é o padrão). Confirme que ninguém pôs `false` nem `alwaysLoad: true` num servidor. |
-| MCPs que o projeto não usa | Escopo por projeto (`.mcp.json` no projeto, e não no `~/.claude.json` do usuário) ou `/mcp` para desligar no projeto. |
-| CLAUDE.md longo | Enxugar. Subagents mecânicos podem usar `omitClaudeMd: true`. |
-| Muitas skills ou plugins | Desinstalar o que ninguém usa: a lista de skills entra na base. |
-| Agentes definidos | Cada definição em `.claude/agents/` entra na lista de agentes. Remova as que não são usadas. |
+| **Memory files** (CLAUDE.md) | Normalmente o maior item que dá pra cortar. Siga [`enxugar-claude-md.md`](enxugar-claude-md.md). Subagents mecânicos podem usar `omitClaudeMd: true`. |
+| Schemas de ferramentas MCP | Normalmente já são adiados: no `/context all` aparecem como "loaded on-demand", e as instruções de MCP somam pouco. Só vale mexer se algum servidor tiver `alwaysLoad: true` ou se `ENABLE_TOOL_SEARCH=false`. |
+| Skills e plugins | Cada skill põe ~50–500 tokens na base. Desinstale os plugins que ninguém usa. Os de uso diário raramente compensam o corte. |
+| Agentes definidos | Cada definição entra na lista de agentes (~100 tokens). Pouco ganho. |
+| System tools (~20k) | Ferramentas nativas. Não dá para tirar da conversa principal; só caem em subagents com `tools:` restrito. |
 
-**Meta**: base abaixo de 35k. O efeito aparece na coluna `baseline` do `lcc usage`.
+**Meta**: base abaixo de 40k. O efeito aparece na coluna `baseline` do `lcc usage`.
 
 ## 2. Subagents: modelo e ferramentas certos
 
@@ -55,6 +55,10 @@ Por que funciona: no Haiku 5.5 a releitura custa $0,01/M, contra $0,20/M no Sonn
 
 Para que o time realmente use esses agentes, ponha uma linha no CLAUDE.md do projeto, por exemplo: *"Para executar testes ou publicar resultados, delegue ao agente `runner`. Para investigar, use `scout`."*
 
+O jeito mais simples, sem criar agente nenhum: o modelo de cada chamada de subagent tem precedência sobre todo o resto. Então uma regra no CLAUDE.md já basta:
+
+> Subagents: para tarefas mecânicas com passos já definidos (rodar um caso de teste, publicar resultado, preencher campos, abrir bug a partir de dados prontos), chame o subagent com `model: haiku`. Use Sonnet só para investigar, decidir ou escrever código.
+
 Alternativa global, mais agressiva: `CLAUDE_CODE_SUBAGENT_MODEL=haiku` vira o modelo padrão de qualquer subagent sem `model` próprio. Teste antes num dia de trabalho normal. Se a qualidade cair, volte atrás.
 
 ## 3. Sessões longas
@@ -63,7 +67,7 @@ A sessão principal mais cara custou $124 sozinha. Hábitos e configuração:
 
 - **`/clear` ao trocar de tarefa.** É a alavanca mais barata que existe: zera a conversa e mantém só a base.
 - **`/compact` ao fim de cada etapa** de uma tarefa longa, com instrução do que preservar (`/compact mantenha os IDs dos itens e a lista de pendências`).
-- **Compactação automática mais cedo**: `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` (janela de 200k) e/ou `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=<1-100>`. Esta última só consegue *baixar* o limiar padrão. Compactar cedo demais perde detalhe; comece em 200k e meça.
+- **Compactação automática mais cedo.** Veja a linha "Auto-compact window" no `/context all`. Em modelos de 1M de contexto ela pode ser de **1M**: a sessão cresce até perto de 1M antes de compactar, e cada turno relê tudo isso. Configure `CLAUDE_CODE_AUTO_COMPACT_WINDOW=200000` (aceita de 100000 a 1000000) no `env` do `~/.claude/settings.json`. Para ajuste fino há também `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE=<1-100>`, que só consegue *baixar* o limiar. Compactar cedo demais perde detalhe; comece em 200k e meça.
 - Para subagents longos: `autoCompactWindow` no frontmatter do agente.
 
 ## 4. Saídas grandes de ferramentas (efeito menor na VM)
