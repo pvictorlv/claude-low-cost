@@ -1,0 +1,13 @@
+{
+  "name": "@lcc/cli",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "lcc": "dist/main.js"
+  },
+  "dependencies": {
+    "@lcc/core": "0.1.0",
+    "zod": "^3.24.0"
+  }
+}

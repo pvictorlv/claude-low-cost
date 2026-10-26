@@ -1,0 +1,29 @@
+{
+  "$comment": "USD per million tokens, Anthropic first-party API rates. Source: claude-api skill model table cached 2026-10-06. Re-check https://www.anthropic.com/pricing before trusting totals. Cache writes default to 1.25x input (5m TTL) and 2x input (1h TTL); cache reads are per model.",
+  "asOf": "2026-10-06",
+  "defaults": {
+    "cacheWrite5mMultiplier": 1.25,
+    "cacheWrite1hMultiplier": 2,
+    "cacheReadMultiplier": 0.1
+  },
+  "models": [
+    { "match": "claude-fable-5-1", "input": 10, "output": 50, "cacheRead": 0.25 },
+    { "match": "claude-mythos-5-1", "input": 10, "output": 50, "cacheRead": 0.25 },
+    { "match": "claude-fable-5", "input": 10, "output": 50 },
+    { "match": "claude-opus-5-5", "input": 4, "output": 20, "cacheRead": 0.2, "fastMultiplier": 2 },
+    { "match": "claude-opus-5", "input": 5, "output": 25, "fastMultiplier": 2 },
+    { "match": "claude-opus-4-8", "input": 5, "output": 25, "fastMultiplier": 2 },
+    { "match": "claude-opus-4-7", "input": 5, "output": 25 },
+    { "match": "claude-opus-4-6", "input": 5, "output": 25 },
+    { "match": "claude-sonnet-5-5", "input": 2, "output": 10, "cacheRead": 0.2 },
+    { "match": "claude-sonnet-5", "input": 2, "output": 10 },
+    { "match": "claude-sonnet-4-6", "input": 3, "output": 15 },
+    {
+      "match": "claude-haiku-5-5",
+      "input": 0.1,
+      "output": 0.5,
+      "longContext": { "abovePromptTokens": 100000, "input": 0.5, "output": 2.5 }
+    },
+    { "match": "claude-haiku-4-5", "input": 1, "output": 5 }
+  ]
+}
